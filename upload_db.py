@@ -6,9 +6,9 @@ import re
 
 # PostgreSQL 데이터베이스 연결 정보
 DB_CONFIG = {
-    "dbname": "Qpoll_Data",    # 데이터베이스 이름
-    "user": "?",    # 사용자 이름 (예: postgres)
-    "password": "?",  # 비밀번호
+    "dbname": "Qpoll_Data2",    # 데이터베이스 이름
+    "user": "kjw8567",    # 사용자 이름 (예: postgres)
+    "password": "8567",  # 비밀번호
     "host": "localhost",        # DB 주소 (로컬이면 localhost)
     "port": "5432"              # DB 포트
 }
