@@ -76,6 +76,12 @@ def process_question_sheet_to_db(file_path):
             # 셀이 비어있으면 선택지가 끝난 것으로 간주하고 중단
             if pd.isna(option_text) or not str(option_text).strip():
                 break 
+
+            # 셀 내용에 'CNT' 또는 '참여자' 라는 텍스트가 포함되어 있으면,
+            # 인원수 데이터로 간주하고 반복을 즉시 중단합니다.
+            if 'CNT' in str(option_text) or '참여자' in str(option_text):
+                print("-> 인원수 관련 컬럼을 만나 문항 읽기를 중단합니다.")
+                break
             
             option_count += 1
             option_code = str(i + 1) # 보기 1, 2, 3... 에 해당하는 코드를 순서대로 생성
