@@ -3,7 +3,6 @@ import psycopg2
 import re
 from datetime import date
 
-# --- 설정 (이 부분은 그대로 사용) ---
 DB_CONFIG = {
     "dbname": "Qpoll_Data2",
     "user": "kjw8567",
