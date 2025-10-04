@@ -56,23 +56,23 @@ def process_dynamic_survey_from_excel(cur, file_path):
             "INSERT INTO PROFILE_QUESTIONS (question_id, question_text, question_type) VALUES (%s, %s, %s) ON CONFLICT (question_id) DO NOTHING;",
             (profile_question_id, question_text, 'MULTIPLE')
         )
-        print(f"  - [PROFILE] 질문 처리: {question_text}...") 
+        print(f"  - [PROFILE] 질문 처리: {question_text}...") # 
 
         cur.execute(
         "INSERT INTO POLLS (poll_title, poll_date) VALUES (%s, %s) ON CONFLICT (poll_title) DO UPDATE SET poll_date = EXCLUDED.poll_date RETURNING poll_id;",
         (question_text, date.today())
         )
         poll_id = cur.fetchone()[0]
-        print(f"  - [POLL] 설문 처리: {question_text[:30]}... (Poll ID: {poll_id})")
+        print(f"  - [POLL] 설문 처리: {question_text}... (Poll ID: {poll_id})")
 
-        # ✨ 변경점 3: '문항1', '문항2' ... 와 같은 키(key)를 생성하여 ID 저장
+        # '문항1', '문항2'~ 같은 키(key)를 생성하여 ID 저장
         question_key = f'문항{question_counter}'
         question_text_to_ids_map[question_key] = {
             'profile_id': profile_question_id,
             'poll_id': poll_id
         }
         
-        # PROFILE_ANSWER_OPTIONS 테이블 처리 (기존과 동일)
+        # PROFILE_ANSWER_OPTIONS 테이블 처리
         for i in range(1, 100):
             option_col_name = f'보기{i}'
             if option_col_name not in row or pd.isna(row[option_col_name]):
@@ -89,16 +89,8 @@ def process_dynamic_survey_from_excel(cur, file_path):
     # === 2. 사용자 응답 시트(첫 번째 시트) 처리 ===
     df_responses = pd.read_excel(file_path, sheet_name=SHEET_RESPONSES, header=HEADER_ROW_RESPONSES)
     print(f"-> 응답 시트에서 총 {len(df_responses)}개의 응답 행을 읽었습니다.")
-    
-    # --- ✨ 원인 파악을 위한 디버깅 코드 추가 ✨ ---   
-    print("\n" + "="*20 + " [디버깅 정보] " + "="*20)
-    print("1. [답변 시트]의 컬럼 목록:")
-    print(list(df_responses.columns))
-    print("\n2. [질문 시트]에서 추출한 질문 목록 (매핑 키):")
-    print(list(question_text_to_ids_map.keys()))
-    print("="*55 + "\n")
-    # --- 디버깅 코드 끝 ---
-    
+
+    # 응답 시트의 컬럼명 중 질문 텍스트와 매칭되는 컬럼만 추출
     answer_columns = [col for col in df_responses.columns if col in question_text_to_ids_map]
     print(f"-> 처리할 답변 컬럼: {answer_columns}")
 
@@ -110,7 +102,7 @@ def process_dynamic_survey_from_excel(cur, file_path):
         birth_date = parse_birthdate(row['나이'])
         if birth_date is None: continue
         cur.execute(
-            "INSERT INTO USERS (user_id, gender, birth_date, region, updated_at) VALUES (%s, %s, %s, %s, NOW()) ON CONFLICT (user_id) DO UPDATE SET gender = EXCLUDED.gender, birth_date = EXCLUDED.birth_date, region = EXCLUDED.region, updated_at = NOW();",
+            "INSERT INTO USERS (user_id, gender, birth_date, region) VALUES (%s, %s, %s, %s) ON CONFLICT (user_id) DO NOTHING;",
             (user_id, str(row['성별']).strip(), birth_date, str(row['지역']).strip())
         )
         
@@ -119,12 +111,12 @@ def process_dynamic_survey_from_excel(cur, file_path):
         for col_name in answer_columns:
             ids = question_text_to_ids_map[col_name]
             profile_question_id = ids['profile_id']
-            poll_id = ids['poll_id'] # ✨ poll_id 가져오기
+            poll_id = ids['poll_id'] # poll_id 가져오기
             
             answer_value_raw = row.get(col_name) # 나누기 전 원본 답변
             
             if pd.notna(answer_value_raw) and str(answer_value_raw).strip():
-                # --- USER_PROFILE_ANSWERS 테이블 처리 (기존과 동일) ---
+                # USER_PROFILE_ANSWERS 테이블 처리 
                 answers = str(answer_value_raw).split(',')
                 for single_answer in answers:
                     final_answer_str = single_answer.strip()
@@ -142,7 +134,7 @@ def process_dynamic_survey_from_excel(cur, file_path):
                     "INSERT INTO USER_PROFILE_ANSWERS (user_id, question_id, answer_value, answered_at) VALUES (%s, %s, %s, %s) ON CONFLICT (user_id, question_id, answer_value) DO NOTHING;",
                     (user_id, profile_question_id, final_answer_for_db, answered_at) # final_answer 대신 final_answer_for_db 사용
                 )
-                # --- ✨ 변경점: USER_POLL_RESPONSES 테이블 처리 ---
+                # USER_POLL_RESPONSES 테이블 처리 
                 raw_parts = str(answer_value_raw).split(',')
                 clean_parts = []
                 for part in raw_parts:
@@ -160,7 +152,7 @@ def process_dynamic_survey_from_excel(cur, file_path):
                 poll_response_value = ", ".join(clean_parts)
 
                 cur.execute(
-                    "INSERT INTO USER_POLL_RESPONSES (user_id, poll_id, response_value, responded_at) VALUES (%s, %s, %s, %s) ON CONFLICT (user_id, poll_id) DO UPDATE SET response_value = EXCLUDED.response_value, responded_at = EXCLUDED.responded_at;",
+                    "INSERT INTO USER_POLL_RESPONSES (user_id, poll_id, response_value, responded_at) VALUES (%s, %s, %s, %s) ON CONFLICT (user_id, poll_id) DO NOTHING;",
                     (user_id, poll_id, poll_response_value, answered_at)
                 )
 
